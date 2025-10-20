@@ -8,12 +8,12 @@ import numpy as np
 # Set page config
 st.set_page_config(
     page_title="UK Salary Take-Home Calculator",
-    page_icon="💰",
+    page_icon="",
     layout="wide"
 )
 
 def calculate_take_home(gross_salary, pension_percent=0):
-    """Calculate UK take-home salary including taxes and pension"""
+    """Calculate UK take-home salary, including taxes and pension"""
     pension_contribution = (gross_salary * pension_percent) / 100
     salary_after_pension = gross_salary - pension_contribution
     
@@ -88,7 +88,7 @@ def display_salary_card(title, data, color):
     """Display salary breakdown card"""
     with st.container():
         st.markdown(f"""
-        <div style="border: 2px solid {color}; border-radius: 10px; padding: 20px; margin: 10px 0; background-color: rgba{color[3:-1]}, 0.1);">
+        <div style="border: 2px solid {color}; border-radius: 10px; padding: 20px; margin: 10px 0; background-color: rgba(52, 152, 219, 0.1);">
         <h3>{title}</h3>
         </div>
         """, unsafe_allow_html=True)
@@ -148,7 +148,7 @@ def main():
     
     gross_diff = salary2 - salary1
     takehome_diff = salary2_analysis['take_home'] - salary1_analysis['take_home']
-    keep_percentage = (takehome_diff / gross_diff) * 100 if gross_diff > 0 else 0
+    keep_percentage = (takehome_diff / gross_diff) * 100 if gross_diff != 0 else 0
     
     with col1:
         st.metric("Gross Difference", format_currency(gross_diff))
@@ -255,11 +255,24 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown("""
-    **Note:** Calculations are based on UK tax rates for 2024/25 tax year. 
-    Includes income tax, National Insurance, and optional pension contributions. 
-    Does not include other potential deductions like student loans, childcare vouchers, or salary sacrifice schemes.
-    """)
+    st.caption("Tax rules used in this model — click to expand for details")
+
+    with st.expander("Tax calculation details"):
+        st.markdown("""
+        - Personal allowance: £12,570 (reduced by £1 for every £2 of income over £100,000).
+        - Income tax on taxable income (2024/25 model):
+          - 20% basic rate up to £37,700
+          - 40% higher rate from £37,700 to £125,140
+          - 45% additional rate above £125,140
+        - National Insurance (Class 1 employee, modelled):
+          - 12% on earnings between £12,570 and £50,270
+          - 2% on earnings above £50,270
+        - Pension contributions in this model are deducted from gross pay before tax and NI.
+        - Exclusions: student loans, salary sacrifice schemes, employer pension contributions, PAYE code adjustments and other deductions are not modelled.
+        - Based on UK 2024/25 rates. Official references:
+          - https://www.gov.uk/income-tax-rates
+          - https://www.gov.uk/national-insurance-rates
+        """)
 
 if __name__ == "__main__":
     main()
