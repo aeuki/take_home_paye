@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import numpy as np
 
 # Set page config
@@ -36,7 +35,7 @@ def calculate_take_home(gross_salary, pension_percent=0):
     elif taxable_income > 0:  # Basic rate
         income_tax += taxable_income * 0.20
     
-    # National Insurance (on gross salary minus pension)
+    # National Insurance: on gross salary minus pension
     national_insurance = 0
     ni_threshold = 12570  # Primary threshold
     upper_threshold = 50270
@@ -116,17 +115,17 @@ def display_salary_card(title, data, color):
 
 # Main app
 def main():
-    st.title("🇬🇧 UK Salary Take-Home Analysis")
-    st.markdown("Calculate your real take-home salary after UK taxes, National Insurance, and pension contributions.")
+    st.title("🇬🇧 UK PAYE CALC 2025/6")
+    st.markdown("Compare take-home salaries after Income Tax, National Insurance, and pension contributions.")
     
     # Sidebar controls
-    st.sidebar.header("Settings")
-    max_salary = st.sidebar.slider("Maximum Salary for Chart", 50000, 200000, 100000, 10000)
-    pension_rate = st.sidebar.slider("Pension Contribution %", 0.0, 15.0, 3.0, 0.5)
-    
     st.sidebar.header("Compare Salaries")
     salary1 = st.sidebar.number_input("Salary 1 (£)", 15000, 200000, 35000, 1000)
     salary2 = st.sidebar.number_input("Salary 2 (£)", 15000, 200000, 50000, 1000)
+
+    st.sidebar.header("Settings")
+    pension_rate = st.sidebar.slider("Pension Contribution %", 0.0, 15.0, 3.0, 0.5)
+    max_salary = st.sidebar.slider("Maximum Salary for Chart", 50000, 200000, 100000, 10000)
     
     # Calculate comparisons
     salary1_analysis = calculate_take_home(salary1, pension_rate)
@@ -154,23 +153,23 @@ def main():
         st.metric("Gross Difference", format_currency(gross_diff))
     
     with col2:
-        st.metric("Take-Home Difference", format_currency(takehome_diff))
+        st.metric("Net Difference", format_currency(takehome_diff))
     
     with col3:
-        st.metric("You Keep of Extra Gross", f"{keep_percentage:.1f}%")
+        st.metric("What Would You Keep?", f"{keep_percentage:.1f}%")
     
     # Generate chart data
     df = create_salary_data(max_salary, pension_rate)
     
     # Gross vs Take-Home Chart
-    st.header("Gross vs Take-Home Salary")
+    st.header("Total vs Take-Home Salary")
     fig1 = go.Figure()
     
     fig1.add_trace(go.Scatter(
         x=df['salary'],
         y=df['gross'],
         mode='lines',
-        name='Gross Salary',
+        name='Total Salary',
         line=dict(color='blue', dash='dash', width=2)
     ))
     
