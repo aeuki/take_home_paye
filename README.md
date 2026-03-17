@@ -4,26 +4,26 @@ A Streamlit web app to help understand and compare the full value of job offers.
 
 **Tax year:** 2026/27 · **Jurisdiction:** England, Wales, Northern Ireland & Scotland
 
-> **Live app:** [Add Streamlit app URL here after deploying]
+> **Live app:** https://takehomepaye.streamlit.app/
 
 ---
 
 ## Use cases
 
 ### Comparing job offers
-Advertised salaries hide significant variation in real value. A role paying £5,000 less may be worth more once you account for a generous employer pension contribution, and the comparison tool surfaces this directly. Enter two positions, configure their respective packages, and see total package value, take-home pay, and the key deduction breakdown side by side — from a single set of row labels so nothing is repeated.
+Headline salaries can hide wide a very wide variation in total effective compensation. This tool aims to help understand what a role offers, and to compare two roles more fairly, by taking account of pension, leave, and other conditions of employment. Configure to see total package value, take-home pay, and the key deduction breakdown side by side.
 
 ### Understanding concealed package value
-Employer pension contributions (especially in the public sector) can add 15–30% on top of gross salary in value that never appears on a job advert. This tool shows:
-- **DC schemes:** concrete employer £ contribution alongside employee contribution
-- **DB schemes:** accrual rate (e.g. 1/57th) and notional employer cost %, so you can compare against a DC offer on a like-for-like basis
-- **Total Package Value** = gross salary + employer pension — what the role actually costs the employer and what you're receiving in total
+Employer pension contributions (especially in the public sector) can add 15–30% on top of gross salary in value. This tool shows:
+- **DC schemes:** employer contribution alongside employee contribution
+- **DB schemes:** accrual rate (e.g. 1/57th) and notional employer cost %, so you can better compare against a DC offer
+- **Total Package Value** = gross salary + employer pension : what the role actually costs the employer and what the employee receives in total
 
 ### Pitching salary expectations
-When negotiating, it helps to frame a request in terms of what you'd actually keep. The "You Keep of Extra Gross" metric shows what fraction of any salary uplift reaches your pocket after tax and NI — useful for quantifying why a £3,000 raise matters less than it sounds, or for justifying a higher ask.
+Many roles require applicants to propse a salary expectation.  To do this effectively it helps to understand take-home salary and the value of other benefits that the spec outlines.
 
-### Seeing where your money goes
-The tax breakdown chart shows Income Tax, National Insurance, employee pension, and take-home as a **percentage of gross salary** across the full salary range — making it clear how the proportions shift as salary rises, including the 60% effective marginal rate trap between £100,000 and £125,140.
+### Understanding differences in gross salary
+The tax breakdown chart shows Income Tax, National Insurance, employee pension, and take-home as a **percentage of gross salary** across the full salary range — making it clear how the proportions shift as salary rises, including the 60% effective marginal rate trap between £100,000 and £125,140. This helps to understand the practical value of differences in gross salary.  Is it worth taking a higher offer for a less attractive role?
 
 ---
 

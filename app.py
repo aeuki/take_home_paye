@@ -131,7 +131,11 @@ def _is_strong(text):
 def position_sidebar_ui(prefix, default_salary, default_label):
     pos_label = st.sidebar.text_input("Label", default_label, key=f"{prefix}_label")
     salary = st.sidebar.number_input(
-        "Gross Salary (£)", 10000, 500000, default_salary, 1000, key=f"{prefix}_salary"
+        "Base Salary (£)", 10000, 500000, default_salary, 1000, key=f"{prefix}_salary"
+    )
+    bonus_pct = st.sidebar.number_input(
+        "Annual bonus (%)", 0.0, 200.0, 0.0, 1.0, key=f"{prefix}_bonus", format="%.1f",
+        help="Bonus as a % of base salary — taxed as normal income.",
     )
     jurisdiction_choice = st.sidebar.radio(
         "Jurisdiction", ["England / Wales / NI", "Scotland"],
@@ -162,7 +166,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
         return salary, pos_label, work, {"enabled": False}
 
     ptype = st.sidebar.radio(
-        "Type", ["DC (Defined Contribution)", "DB (Defined Benefit)"],
+        "Type", ["Defined Contribution", "Defined Benefit"],
         key=f"{prefix}_ptype", horizontal=True,
     )
     employee_pct = st.sidebar.slider(
@@ -185,7 +189,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
                    "employee_pct": employee_pct, "employer_pct": employer_pct,
                    "accrual": accrual}
 
-    return salary, pos_label, work, pension
+    return salary, pos_label, work, pension, bonus_pct
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +199,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
 JURIS_LABEL = {"england": "Eng/Wales/NI", "scotland": "Scotland"}
 
 
-def build_comparison_rows(data1, pension1, work1, data2, pension2, work2):
+def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_pct1=0, bonus_pct2=0):
     er1 = data1['gross'] * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
     er2 = data2['gross'] * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
     leave_adj1, hours_adj1 = calc_package_adjustments(data1['gross'], work1)
@@ -216,10 +220,28 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2):
         return "37.5 hrs (standard)" if abs(diff) < 0.01 else \
                f"{h:.1f} hrs ({'+' if diff > 0 else ''}{diff:.1f} vs 37.5)"
 
+    bonus1 = data1['gross'] * bonus_pct1 / (100 + bonus_pct1) if bonus_pct1 else 0
+    bonus2 = data2['gross'] * bonus_pct2 / (100 + bonus_pct2) if bonus_pct2 else 0
+    base1 = data1['gross'] - bonus1
+    base2 = data2['gross'] - bonus2
+    either_bonus = bonus_pct1 or bonus_pct2
+
     rows = [
-        ("Gross Salary",
-         format_currency(data1['gross']), format_currency(data2['gross'])),
+        ("Base Salary",
+         format_currency(base1), format_currency(base2)),
     ]
+
+    if either_bonus:
+        rows.append((
+            "Annual Bonus",
+            f"+{format_currency(bonus1)}<br><small style='color:#888;'>{bonus_pct1:.1f}% of base</small>" if bonus_pct1 else "—",
+            f"+{format_currency(bonus2)}<br><small style='color:#888;'>{bonus_pct2:.1f}% of base</small>" if bonus_pct2 else "—",
+        ))
+        rows.append((
+            "<strong>Total Gross</strong>",
+            f"<strong>{format_currency(data1['gross'])}</strong>",
+            f"<strong>{format_currency(data2['gross'])}</strong>",
+        ))
 
     if either_pension:
         rows.append((
@@ -229,7 +251,7 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2):
         ))
 
     rows.append((
-        "<strong>Total Package Value (cash)</strong>",
+        "<strong>Total Package Value</strong>",
         f"<strong>{format_currency(cash_package1)}</strong>",
         f"<strong>{format_currency(cash_package2)}</strong>",
     ))
@@ -387,78 +409,6 @@ _FOOTER_TEXT = (
 )
 
 
-def generate_html_report(title1, title2, rows, metrics_rows, today):
-    """Build a self-contained HTML document. Returns a UTF-8 string."""
-    table_rows_html = ""
-    non_sep = 0
-    for label, v1, v2 in rows:
-        if label == "__sep__":
-            table_rows_html += (
-                '<tr><td colspan="3" style="padding:0;">'
-                '<hr style="margin:4px 0;border:none;border-top:1px solid #ccd6e0;"></td></tr>\n'
-            )
-            continue
-        bg = "#f4f8fc" if non_sep % 2 == 0 else "#ffffff"
-        non_sep += 1
-        table_rows_html += (
-            f'<tr style="background:{bg};">'
-            f'<td style="padding:10px 16px;font-size:15px;vertical-align:top;">{label}</td>'
-            f'<td style="padding:10px 16px;font-size:15px;text-align:right;color:#1a3c5e;vertical-align:top;">{v1}</td>'
-            f'<td style="padding:10px 16px;font-size:15px;text-align:right;color:#1a5e34;vertical-align:top;">{v2}</td>'
-            f'</tr>\n'
-        )
-
-    metrics_html = "".join(
-        f'<div style="display:inline-block;margin:0 28px 16px 0;">'
-        f'<div style="font-size:12px;color:#666;margin-bottom:4px;">{lbl}</div>'
-        f'<div style="font-size:20px;font-weight:700;color:#1a3c5e;">{val}</div>'
-        f'</div>\n'
-        for lbl, val in metrics_rows
-    )
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>UK Total Compensation Comparison</title>
-<style>
-  body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;max-width:980px;margin:40px auto;padding:0 24px;color:#222;}}
-  h1{{color:#1a3c5e;font-size:26px;margin-bottom:4px;}}
-  .sub{{color:#666;font-size:13px;margin-bottom:28px;}}
-  table{{width:100%;border-collapse:collapse;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.10);margin-bottom:32px;}}
-  thead tr{{background:#1a3c5e;color:#fff;}}
-  th{{padding:13px 16px;font-size:15px;font-weight:600;}}
-  th:first-child{{text-align:left;width:40%;}}
-  th:not(:first-child){{text-align:right;}}
-  .metrics{{background:#f4f8fc;border-radius:8px;padding:20px 24px;margin-bottom:32px;}}
-  h2{{color:#1a3c5e;font-size:18px;margin:0 0 16px;}}
-  .footer{{font-size:12px;color:#888;border-top:1px solid #ddd;padding-top:16px;line-height:1.6;}}
-</style>
-</head>
-<body>
-<h1>&#128188; UK Total Compensation Comparison</h1>
-<p class="sub">Generated {today} &middot; 2026/27 tax year &middot; England, Wales, Northern Ireland and Scotland</p>
-
-<table>
-  <thead><tr>
-    <th></th>
-    <th>{title1}</th>
-    <th>{title2}</th>
-  </tr></thead>
-  <tbody>{table_rows_html}</tbody>
-</table>
-
-<div class="metrics">
-  <h2>Difference Analysis</h2>
-  {metrics_html}
-</div>
-
-<div class="footer">{_FOOTER_TEXT}</div>
-</body>
-</html>"""
-
-
 def generate_pdf_report(title1, title2, rows, metrics_rows, today):
     """Build a PDF using reportlab. Returns bytes."""
     from reportlab.lib.pagesizes import A4
@@ -590,19 +540,19 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
 # ---------------------------------------------------------------------------
 
 def main():
-    st.title("💼 UK Total Compensation Comparison")
+    st.title("UK take-home pay calc")
     st.markdown(
-        "Compare the full value of job offers — salary, pension, annual leave, and working hours. "
-        "**2026/27 tax year · England, Wales, Northern Ireland and Scotland.**"
+        "Compare job offers: salary, pension, annual leave, and working hours. \n \n"
+        "2026/27 tax year · England, Wales, Northern Ireland and Scotland."
     )
 
     # ── Sidebar ──────────────────────────────────────────────────────────────
     st.sidebar.header("Position 1")
-    salary1, label1, work1, pension1 = position_sidebar_ui("p1", 35000, "Position 1")
+    salary1, label1, work1, pension1, bonus_pct1 = position_sidebar_ui("p1", 35000, "Position 1")
 
     st.sidebar.divider()
     st.sidebar.header("Position 2")
-    salary2, label2, work2, pension2 = position_sidebar_ui("p2", 50000, "Position 2")
+    salary2, label2, work2, pension2, bonus_pct2 = position_sidebar_ui("p2", 50000, "Position 2")
 
     st.sidebar.divider()
     st.sidebar.header("Charts")
@@ -618,15 +568,17 @@ def main():
     chart_juris_key = "scotland" if "Scotland" in chart_jurisdiction else "england"
 
     # ── Calculations ─────────────────────────────────────────────────────────
+    effective_salary1 = salary1 * (1 + bonus_pct1 / 100)
+    effective_salary2 = salary2 * (1 + bonus_pct2 / 100)
     emp_pct1 = pension1['employee_pct'] if pension1.get('enabled') else 0
     emp_pct2 = pension2['employee_pct'] if pension2.get('enabled') else 0
-    data1 = calculate_take_home(salary1, emp_pct1, work1['jurisdiction'])
-    data2 = calculate_take_home(salary2, emp_pct2, work2['jurisdiction'])
+    data1 = calculate_take_home(effective_salary1, emp_pct1, work1['jurisdiction'])
+    data2 = calculate_take_home(effective_salary2, emp_pct2, work2['jurisdiction'])
 
     # ── Comparison table ─────────────────────────────────────────────────────
-    st.header("Package Comparison")
+    st.header("Compensation")
     rows, adj_pkg1, adj_pkg2 = build_comparison_rows(
-        data1, pension1, work1, data2, pension2, work2
+        data1, pension1, work1, data2, pension2, work2, bonus_pct1, bonus_pct2
     )
     display_comparison_table(
         f"{label1}<br><small style='font-weight:normal;'>{format_currency(salary1)}</small>",
@@ -637,10 +589,10 @@ def main():
     # ── Difference metrics ────────────────────────────────────────────────────
     st.header("Difference Analysis")
     col1, col2, col3, col4, col5 = st.columns(5)
-    er1 = salary1 * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
-    er2 = salary2 * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
-    gross_diff    = salary2 - salary1
-    package_diff  = (salary2 + er2) - (salary1 + er1)
+    er1 = effective_salary1 * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
+    er2 = effective_salary2 * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
+    gross_diff    = effective_salary2 - effective_salary1
+    package_diff  = (effective_salary2 + er2) - (effective_salary1 + er1)
     adj_diff      = adj_pkg2 - adj_pkg1
     takehome_diff = data2['take_home'] - data1['take_home']
     keep_pct      = (takehome_diff / gross_diff * 100) if gross_diff != 0 else 0
@@ -654,8 +606,8 @@ def main():
     # ── Export ────────────────────────────────────────────────────────────────
     st.header("Export")
     today_str = date.today().strftime("%d %B %Y")
-    title1_plain = f"{label1} ({format_currency(salary1)})"
-    title2_plain = f"{label2} ({format_currency(salary2)})"
+    title1_plain = f"{label1} ({format_currency(effective_salary1)})"
+    title2_plain = f"{label2} ({format_currency(effective_salary2)})"
     metrics_rows = [
         ("Gross Difference",           format_currency(gross_diff)),
         ("Cash Package Difference",    format_currency(package_diff)),
@@ -664,34 +616,18 @@ def main():
         ("You Keep of Extra Gross",    f"{keep_pct:.1f}%"),
     ]
 
-    exp_col1, exp_col2 = st.columns(2)
-
-    with exp_col1:
-        html_bytes = generate_html_report(
+    try:
+        pdf_bytes = generate_pdf_report(
             title1_plain, title2_plain, rows, metrics_rows, today_str
-        ).encode("utf-8")
-        st.download_button(
-            label="⬇ Download HTML",
-            data=html_bytes,
-            file_name="compensation_comparison.html",
-            mime="text/html",
-            use_container_width=True,
         )
-
-    with exp_col2:
-        try:
-            pdf_bytes = generate_pdf_report(
-                title1_plain, title2_plain, rows, metrics_rows, today_str
-            )
-            st.download_button(
-                label="⬇ Download PDF",
-                data=pdf_bytes,
-                file_name="compensation_comparison.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except ImportError:
-            st.info("`reportlab` not installed — run `pip install reportlab` to enable PDF export.")
+        st.download_button(
+            label="⬇ Download PDF",
+            data=pdf_bytes,
+            file_name="compensation_comparison.pdf",
+            mime="application/pdf",
+        )
+    except ImportError:
+        st.info("`reportlab` not installed — run `pip install reportlab` to enable PDF export.")
 
     # ── Charts ────────────────────────────────────────────────────────────────
     df = create_salary_data(max_salary, chart_pension_rate, chart_juris_key)
