@@ -3,9 +3,6 @@ from io import BytesIO
 from datetime import date
 
 import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
-import numpy as np
 
 st.set_page_config(
     page_title="UK Total Compensation Comparison",
@@ -160,10 +157,16 @@ def position_sidebar_ui(prefix, default_salary, default_label):
         "hours_pw": hours_pw,
     }
 
+    st.sidebar.markdown("**Commuting**")
+    commute_cost = st.sidebar.number_input(
+        "Annual commuting cost (£)", 0, 30000, 0, 100, key=f"{prefix}_commute",
+        help="Total annual cost of commuting (rail, parking, fuel, etc.).",
+    )
+
     st.sidebar.markdown("**Pension**")
     pension_enabled = st.sidebar.checkbox("Include pension", True, key=f"{prefix}_pen_enabled")
     if not pension_enabled:
-        return salary, pos_label, work, {"enabled": False}
+        return salary, pos_label, work, {"enabled": False}, bonus_pct, commute_cost
 
     ptype = st.sidebar.radio(
         "Type", ["Defined Contribution", "Defined Benefit"],
@@ -189,7 +192,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
                    "employee_pct": employee_pct, "employer_pct": employer_pct,
                    "accrual": accrual}
 
-    return salary, pos_label, work, pension, bonus_pct
+    return salary, pos_label, work, pension, bonus_pct, commute_cost
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +202,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
 JURIS_LABEL = {"england": "Eng/Wales/NI", "scotland": "Scotland"}
 
 
-def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_pct1=0, bonus_pct2=0):
+def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_pct1=0, bonus_pct2=0, commute_cost1=0, commute_cost2=0):
     er1 = data1['gross'] * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
     er2 = data2['gross'] * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
     leave_adj1, hours_adj1 = calc_package_adjustments(data1['gross'], work1)
@@ -251,7 +254,7 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
         ))
 
     rows.append((
-        "<strong>Total Package Value</strong>",
+        "<strong>Total Compensation</strong>",
         f"<strong>{format_currency(cash_package1)}</strong>",
         f"<strong>{format_currency(cash_package2)}</strong>",
     ))
@@ -263,7 +266,7 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
         (f"Hours Adjustment<br><small style='color:#666;'>normalised to 37.5 hr/wk</small>",
          f"{fmt_adj(hours_adj1)}<br><small style='color:#888;'>{hours_note(work1)}</small>",
          f"{fmt_adj(hours_adj2)}<br><small style='color:#888;'>{hours_note(work2)}</small>"),
-        ("<strong>Adjusted Total Package Value</strong>",
+        ("<strong>Adjusted Compensation</strong>",
          f"<strong>{format_currency(adjusted_package1)}</strong>",
          f"<strong>{format_currency(adjusted_package2)}</strong>"),
         ("__sep__", "", ""),
@@ -295,15 +298,34 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
             f"−{format_currency(data2['employee_pension'])}" if pension2.get('enabled') else "—",
         ))
 
+    net1 = data1['take_home'] - commute_cost1
+    net2 = data2['take_home'] - commute_cost2
+    either_commute = commute_cost1 or commute_cost2
+
     rows += [
         ("__sep__", "", ""),
-        ("<strong>Take-Home (annual)</strong>",
+        ("<strong>Take-Home per year</strong>",
          f"<strong>{format_currency(data1['take_home'])}</strong>",
          f"<strong>{format_currency(data2['take_home'])}</strong>"),
-        ("Take-Home (monthly)",
+        ("Take-Home per month",
          format_currency(data1['take_home'] / 12),
          format_currency(data2['take_home'] / 12)),
-        ("__sep__", "", ""),
+    ]
+
+    if either_commute:
+        rows += [
+            ("Annual Commuting Cost",
+             f"−{format_currency(commute_cost1)}" if commute_cost1 else "—",
+             f"−{format_currency(commute_cost2)}" if commute_cost2 else "—"),
+            ("<strong>Net Take-Home after Commuting</strong>",
+             f"<strong>{format_currency(net1)}</strong>",
+             f"<strong>{format_currency(net2)}</strong>"),
+            ("Net Take-Home per month",
+             format_currency(net1 / 12),
+             format_currency(net2 / 12)),
+        ]
+
+    rows += [("__sep__", "", ""),
         ("Tax Rate (IT + NI)", f"{data1['tax_rate']:.1f}%", f"{data2['tax_rate']:.1f}%"),
         ("Total Deduction Rate (incl. employee pension)",
          f"{data1['deduction_rate']:.1f}%", f"{data2['deduction_rate']:.1f}%"),
@@ -363,32 +385,6 @@ def display_comparison_table(title1, title2, rows):
   <tbody>{html_rows}</tbody>
 </table>"""
     st.markdown(html, unsafe_allow_html=True)
-
-
-# ---------------------------------------------------------------------------
-# Chart data
-# ---------------------------------------------------------------------------
-
-@st.cache_data
-def create_salary_data(max_salary, pension_rate, jurisdiction):
-    salaries = np.linspace(15000, max_salary, 50)
-    data = []
-    for salary in salaries:
-        r = calculate_take_home(salary, pension_rate, jurisdiction)
-        data.append({
-            'salary': salary,
-            'take_home': r['take_home'],
-            'income_tax': r['income_tax'],
-            'national_insurance': r['national_insurance'],
-            'pension': r['employee_pension'],
-            'tax_rate': r['tax_rate'],
-            'deduction_rate': r['deduction_rate'],
-            'income_tax_pct': r['income_tax'] / salary * 100,
-            'ni_pct': r['national_insurance'] / salary * 100,
-            'pension_pct': r['employee_pension'] / salary * 100,
-            'take_home_pct': r['take_home'] / salary * 100,
-        })
-    return pd.DataFrame(data)
 
 
 # ---------------------------------------------------------------------------
@@ -501,30 +497,31 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
     story.append(t)
     story.append(Spacer(1, 10))
 
-    # Difference metrics
-    story.append(Paragraph("Difference Analysis", ParagraphStyle(
-        'h2', parent=styles['Heading2'], fontSize=12, textColor=DARK, spaceAfter=6,
-    )))
-    n = len(metrics_rows)
-    mdata = [[
-        Paragraph(
-            f'<font size="7" color="grey">{lbl}</font><br/><b>{val}</b>',
-            ParagraphStyle('m', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
-        )
-        for lbl, val in metrics_rows
-    ]]
-    mt = Table(mdata, colWidths=[usable / n] * n)
-    mt.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, -1), ALT),
-        ('BOX', (0, 0), (-1, -1), 0.4, colors.HexColor('#ccd6e0')),
-        ('INNERGRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#ccd6e0')),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
-    ]))
-    story.append(mt)
-    story.append(Spacer(1, 10))
+    # Difference metrics (optional)
+    if metrics_rows:
+        n = len(metrics_rows)
+        story.append(Paragraph("Difference Analysis", ParagraphStyle(
+            'h2', parent=styles['Heading2'], fontSize=12, textColor=DARK, spaceAfter=6,
+        )))
+        mdata = [[
+            Paragraph(
+                f'<font size="7" color="grey">{lbl}</font><br/><b>{val}</b>',
+                ParagraphStyle('m', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
+            )
+            for lbl, val in metrics_rows
+        ]]
+        mt = Table(mdata, colWidths=[usable / n] * n)
+        mt.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), ALT),
+            ('BOX', (0, 0), (-1, -1), 0.4, colors.HexColor('#ccd6e0')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#ccd6e0')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+        ]))
+        story.append(mt)
+        story.append(Spacer(1, 10))
 
     # Footer
     story.append(Paragraph(_FOOTER_TEXT, ParagraphStyle(
@@ -542,30 +539,17 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
 def main():
     st.title("UK take-home pay calc")
     st.markdown(
-        "Compare job offers: salary, pension, annual leave, and working hours. \n \n"
+        "Compare job prospects: salary, pension, annual leave, and working hours. \n \n"
         "2026/27 tax year · England, Wales, Northern Ireland and Scotland."
     )
 
     # ── Sidebar ──────────────────────────────────────────────────────────────
     st.sidebar.header("Position 1")
-    salary1, label1, work1, pension1, bonus_pct1 = position_sidebar_ui("p1", 35000, "Position 1")
+    salary1, label1, work1, pension1, bonus_pct1, commute_cost1 = position_sidebar_ui("p1", 35000, "Position 1")
 
     st.sidebar.divider()
     st.sidebar.header("Position 2")
-    salary2, label2, work2, pension2, bonus_pct2 = position_sidebar_ui("p2", 50000, "Position 2")
-
-    st.sidebar.divider()
-    st.sidebar.header("Charts")
-    max_salary = st.sidebar.slider("Max salary for charts", 50000, 500000, 100000, 10000)
-    chart_pension_rate = st.sidebar.slider(
-        "Illustrative employee pension %", 0.0, 15.0, 5.0, 0.5,
-        help="Employee contribution rate used for the general salary curves.",
-    )
-    chart_jurisdiction = st.sidebar.radio(
-        "Chart jurisdiction", ["England / Wales / NI", "Scotland"],
-        horizontal=True, key="chart_juris",
-    )
-    chart_juris_key = "scotland" if "Scotland" in chart_jurisdiction else "england"
+    salary2, label2, work2, pension2, bonus_pct2, commute_cost2 = position_sidebar_ui("p2", 50000, "Position 2")
 
     # ── Calculations ─────────────────────────────────────────────────────────
     effective_salary1 = salary1 * (1 + bonus_pct1 / 100)
@@ -577,8 +561,9 @@ def main():
 
     # ── Comparison table ─────────────────────────────────────────────────────
     st.header("Compensation")
-    rows, adj_pkg1, adj_pkg2 = build_comparison_rows(
-        data1, pension1, work1, data2, pension2, work2, bonus_pct1, bonus_pct2
+    rows, _, _ = build_comparison_rows(
+        data1, pension1, work1, data2, pension2, work2, bonus_pct1, bonus_pct2,
+        commute_cost1, commute_cost2,
     )
     display_comparison_table(
         f"{label1}<br><small style='font-weight:normal;'>{format_currency(salary1)}</small>",
@@ -586,39 +571,14 @@ def main():
         rows,
     )
 
-    # ── Difference metrics ────────────────────────────────────────────────────
-    st.header("Difference Analysis")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    er1 = effective_salary1 * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
-    er2 = effective_salary2 * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
-    gross_diff    = effective_salary2 - effective_salary1
-    package_diff  = (effective_salary2 + er2) - (effective_salary1 + er1)
-    adj_diff      = adj_pkg2 - adj_pkg1
-    takehome_diff = data2['take_home'] - data1['take_home']
-    keep_pct      = (takehome_diff / gross_diff * 100) if gross_diff != 0 else 0
-
-    with col1: st.metric("Gross Difference", format_currency(gross_diff))
-    with col2: st.metric("Cash Package Difference", format_currency(package_diff))
-    with col3: st.metric("Adjusted Package Difference", format_currency(adj_diff))
-    with col4: st.metric("Take-Home Difference", format_currency(takehome_diff))
-    with col5: st.metric("You Keep of Extra Gross", f"{keep_pct:.1f}%")
-
     # ── Export ────────────────────────────────────────────────────────────────
-    st.header("Export")
     today_str = date.today().strftime("%d %B %Y")
     title1_plain = f"{label1} ({format_currency(effective_salary1)})"
     title2_plain = f"{label2} ({format_currency(effective_salary2)})"
-    metrics_rows = [
-        ("Gross Difference",           format_currency(gross_diff)),
-        ("Cash Package Difference",    format_currency(package_diff)),
-        ("Adjusted Package Diff.",     format_currency(adj_diff)),
-        ("Take-Home Difference",       format_currency(takehome_diff)),
-        ("You Keep of Extra Gross",    f"{keep_pct:.1f}%"),
-    ]
 
     try:
         pdf_bytes = generate_pdf_report(
-            title1_plain, title2_plain, rows, metrics_rows, today_str
+            title1_plain, title2_plain, rows, [], today_str
         )
         st.download_button(
             label="⬇ Download PDF",
@@ -628,78 +588,6 @@ def main():
         )
     except ImportError:
         st.info("`reportlab` not installed — run `pip install reportlab` to enable PDF export.")
-
-    # ── Charts ────────────────────────────────────────────────────────────────
-    df = create_salary_data(max_salary, chart_pension_rate, chart_juris_key)
-
-    st.header("Gross vs Take-Home Salary")
-    fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(
-        x=df['salary'], y=df['salary'],
-        mode='lines', name='Gross Salary',
-        line=dict(color='#1a3c5e', dash='dash', width=2),
-    ))
-    fig1.add_trace(go.Scatter(
-        x=df['salary'], y=df['take_home'],
-        mode='lines', name='Take-Home Salary',
-        line=dict(color='#2ecc71', width=3),
-        fill='tonexty', fillcolor='rgba(52,152,219,0.10)',
-    ))
-    fig1.update_layout(xaxis_title="Gross Salary (£)", yaxis_title="Amount (£)",
-                       hovermode='x unified', height=480)
-    st.plotly_chart(fig1, use_container_width=True)
-
-    st.header("Tax & Deduction Rates by Salary")
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=df['salary'], y=df['tax_rate'],
-        mode='lines', name='Tax Rate (IT + NI)',
-        line=dict(color='#e67e22', width=3),
-    ))
-    if chart_pension_rate > 0:
-        fig2.add_trace(go.Scatter(
-            x=df['salary'], y=df['deduction_rate'],
-            mode='lines', name='Total Deduction Rate (incl. pension)',
-            line=dict(color='#e74c3c', width=2, dash='dot'),
-        ))
-    fig2.update_layout(xaxis_title="Gross Salary (£)", yaxis_title="Rate (%)",
-                       hovermode='x unified', height=400)
-    st.plotly_chart(fig2, use_container_width=True)
-
-    st.header("Tax Breakdown by Component (% of Gross)")
-    df_sampled = df.iloc[::5].copy()
-    fig3 = go.Figure()
-    fig3.add_trace(go.Bar(x=df_sampled['salary'], y=df_sampled['income_tax_pct'],
-                          name='Income Tax', marker_color='#e74c3c'))
-    fig3.add_trace(go.Bar(x=df_sampled['salary'], y=df_sampled['ni_pct'],
-                          name='National Insurance', marker_color='#e67e22'))
-    if chart_pension_rate > 0:
-        fig3.add_trace(go.Bar(x=df_sampled['salary'], y=df_sampled['pension_pct'],
-                              name='Employee Pension', marker_color='#3498db'))
-    fig3.add_trace(go.Bar(x=df_sampled['salary'], y=df_sampled['take_home_pct'],
-                          name='Take-Home', marker_color='#2ecc71'))
-    fig3.update_layout(
-        barmode='stack', xaxis_title="Gross Salary (£)",
-        yaxis_title="% of Gross Salary",
-        yaxis=dict(ticksuffix="%", range=[0, 100]),
-        height=500, hovermode='x unified',
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-
-    # ── Data table ────────────────────────────────────────────────────────────
-    if st.checkbox("Show detailed breakdown table"):
-        st.header("Detailed Breakdown")
-        display_df = df.copy()
-        for col in ['take_home', 'income_tax', 'national_insurance', 'pension']:
-            display_df[col] = display_df[col].apply(lambda x: f"£{x:,.0f}")
-        display_df['salary'] = display_df['salary'].apply(lambda x: f"£{x:,.0f}")
-        display_df['tax_rate'] = display_df['tax_rate'].apply(lambda x: f"{x:.1f}%")
-        display_df['deduction_rate'] = display_df['deduction_rate'].apply(lambda x: f"{x:.1f}%")
-        st.dataframe(
-            display_df[['salary', 'take_home', 'income_tax', 'national_insurance',
-                         'pension', 'tax_rate', 'deduction_rate']],
-            use_container_width=True,
-        )
 
     # ── Footer ────────────────────────────────────────────────────────────────
     st.markdown("---")
