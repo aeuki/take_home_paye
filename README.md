@@ -1,8 +1,10 @@
-# UK Total Compensation Comparator
+# UK Total Compensation Comparison
 
-A Streamlit web app for comparing the full value of job offers — not just headline salary, but everything that affects what you actually take home and what the employer is actually spending.
+A Streamlit web app to help understand and compare the full value of job offers.
 
-**Tax year:** 2026/27 · **Jurisdiction:** England, Wales & Northern Ireland
+**Tax year:** 2026/27 · **Jurisdiction:** England, Wales, Northern Ireland & Scotland
+
+> **Live app:** [Add Streamlit app URL here after deploying]
 
 ---
 
@@ -33,20 +35,23 @@ The tax breakdown chart shows Income Tax, National Insurance, employee pension, 
 - DB pension: accrual rate selector plus employer notional cost % for package comparison
 - Pension config is optional — disable per position if not applicable
 - Total Package Value including employer pension contributions
+- Annual leave and hours-per-week adjustments to normalise packages
+- Scotland income tax support (2025/26 bands — 2026/27 not yet confirmed)
 - Tax breakdown chart as % of gross salary (not £ amounts)
 - Gross vs take-home and effective rate charts across salary range
 - Configurable position labels
+- Export comparison as HTML or PDF
 - Detailed data table (optional)
 
 ---
 
-## Local Development
+## Local development
 
 **Requirements:** Python 3.9+
 
 ```bash
 # Clone the repo
-git clone <your-repo-url>
+git clone https://github.com/ay/paye_calc.git
 cd paye_calc
 
 # Create and activate a virtual environment
@@ -64,81 +69,24 @@ The app opens at `http://localhost:8501`.
 
 ---
 
-## Hosting on Opalstack
+## Deploy to Streamlit Community Cloud
 
-Opalstack supports **Custom Apps** that bind to a port and are proxied through nginx. Streamlit fits this model well.
-
-### Step 1 — Create a Custom App in Opalstack
-
-1. Log in to your Opalstack control panel.
-2. Go to **Apps → Add App**.
-3. Choose **Custom App (Listening on Port)** (not Django or Flask).
-4. Give it a name (e.g. `paye_calc`), select your server, and save.
-5. Note the **port number** Opalstack assigns — you'll need it in Step 4.
-
-### Step 2 — Add a Site/Route (optional, for a subdomain)
-
-1. Go to **Sites → Add Site**.
-2. Point a domain or subdomain at the custom app you just created.
-
-### Step 3 — SSH in and set up the app
-
-```bash
-ssh <your-opalstack-username>@<your-server>
-
-# Navigate to the apps directory (path shown in your Opalstack panel)
-cd ~/apps/paye_calc
-
-# Clone your repo into the app directory
-git clone <your-repo-url> .
-
-# Create a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Step 4 — Set the PORT environment variable
-
-Opalstack passes the assigned port via the `$PORT` environment variable when it starts your app.
-The `start.sh` script reads `$PORT` automatically — **no edits needed**.
-
-If you ever need to run the app manually (for testing), set it yourself:
-
-```bash
-export PORT=<port-from-opalstack-panel>
-bash start.sh
-```
-
-### Step 5 — Configure the startup command in Opalstack
-
-1. In the Opalstack panel, open your custom app's settings.
-2. Set the **startup command** to:
-   ```
-   /home/<your-username>/apps/paye_calc/start.sh
-   ```
-3. Save and click **Restart App**.
-
-### Step 6 — Verify
-
-Visit your site URL (or `http://<server-ip>:<port>`) in a browser. You should see the calculator.
-
-### Updating the app
-
-```bash
-ssh <your-opalstack-username>@<your-server>
-cd ~/apps/paye_calc
-git pull
-# Restart via the Opalstack panel, or:
-# Apps → your app → Restart
-```
+1. Fork or clone this repo to your GitHub account.
+2. Go to [share.streamlit.io](https://share.streamlit.io) and connect your GitHub account.
+3. Click **New app**, select the repo and `app.py`, and deploy.
+4. Your app will be live at a `*.streamlit.app` URL.
 
 ---
 
 ## Notes
 
-- Covers England, Wales, and Northern Ireland tax rates. Scotland has different income tax bands and is out of scope.
+- **England, Wales & Northern Ireland** rates are 2026/27.
+- **Scotland** income tax uses 2025/26 bands as 2026/27 bands were not confirmed at time of writing. NI rates are the same across the UK.
 - Does not account for student loan repayments, salary sacrifice, childcare vouchers, or Marriage Allowance.
 - DB employer cost % is a notional figure entered by the user for comparison purposes — actual scheme costs vary by scheme and employer.
+
+---
+
+## Licence
+
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free for personal, educational, and non-commercial use. Commercial use is not permitted.
