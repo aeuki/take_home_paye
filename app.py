@@ -180,7 +180,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
         3.0 if "DC" in ptype else 20.0,
         0.5, key=f"{prefix}_er",
     )
-    if "DC" in ptype:
+    if "Contribution" in ptype:
         pension = {"enabled": True, "type": "DC",
                    "employee_pct": employee_pct, "employer_pct": employer_pct}
     else:
@@ -377,7 +377,7 @@ def display_comparison_table(title1, title2, rows):
 <table style="width:100%;border-collapse:collapse;margin-bottom:28px;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.10);">
   <thead>
     <tr style="background:#1a3c5e;color:white;">
-      <th style="padding:14px 18px;font-size:1.15rem;text-align:left;font-weight:600;width:40%;"></th>
+      <th style="padding:14px 18px;font-size:1.15rem;text-align:left;font-weight:600;width:40%;">Component</th>
       <th style="padding:14px 18px;font-size:1.15rem;text-align:right;font-weight:600;">{title1}</th>
       <th style="padding:14px 18px;font-size:1.15rem;text-align:right;font-weight:600;">{title2}</th>
     </tr>
@@ -458,7 +458,7 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
     col_w = [usable * 0.42, usable * 0.29, usable * 0.29]
 
     tdata = [[
-        cell("", bold=True, size=9),
+        cell("Component", bold=True, color=colors.white, size=9),
         cell(title1, bold=True, align=TA_RIGHT, color=colors.white, size=9),
         cell(title2, bold=True, align=TA_RIGHT, color=colors.white, size=9),
     ]]
@@ -560,7 +560,6 @@ def main():
     data2 = calculate_take_home(effective_salary2, emp_pct2, work2['jurisdiction'])
 
     # ── Comparison table ─────────────────────────────────────────────────────
-    st.header("Compensation")
     rows, _, _ = build_comparison_rows(
         data1, pension1, work1, data2, pension2, work2, bonus_pct1, bonus_pct2,
         commute_cost1, commute_cost2,
