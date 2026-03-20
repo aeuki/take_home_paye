@@ -2,7 +2,7 @@
 
 A Streamlit web app to help understand and compare the full value of job offers.
 
-**Tax year:** 2026/27 · **Jurisdiction:** England, Wales, Northern Ireland & Scotland
+**Tax year:** 2026/27 · **Region:** England, Wales, Northern Ireland & Scotland
 
 > **Live app:** https://takehomepaye.streamlit.app/
 
@@ -11,37 +11,37 @@ A Streamlit web app to help understand and compare the full value of job offers.
 ## Use cases
 
 ### Comparing job offers
-Headline salaries can hide wide a very wide variation in total effective compensation. This tool aims to help understand what a role offers, and to compare two roles more fairly, by taking account of pension, leave, and other conditions of employment. Configure to see total package value, take-home pay, and the key deduction breakdown side by side.
+Headline salaries can hide wide a very wide variation in actual compensation, further obscured by more intangible benefits, such as career progression or cultural fit. This tool aims to help understand what a role offers, and to compare two roles more fairly, by taking account of pension, leave, and other conditions of employment. Configure to see total package value, take-home pay, and the key deduction breakdown side by side.
 
 ### Understanding concealed package value
-Employer pension contributions (especially in the public sector) can add 15–30% on top of gross salary in value. This tool shows:
-- **DC schemes:** employer contribution alongside employee contribution
-- **DB schemes:** accrual rate (e.g. 1/57th) and notional employer cost %, so you can better compare against a DC offer
-- **Total Package Value** = gross salary + employer pension : what the role actually costs the employer and what the employee receives in total
+Employer pension contributions can sometimes add 15–30% on top of gross salary in nominal value, and depending on the type might effectively be worth more.
+- **Defined Contribution schemes:** the emoloyer and employee make set contributions to a pension pot, often with an element of flexibility through the employer matching employee contributions. this builds up a fund that can be used to purchase an annuity at pension age. the actual pension will reflect the performance of the investment whilst saving and the market conditions at the time of purchase.
+- **Defined Benefit schemes:** the pension scheme guarantees a certain income at pension age, based on an accrual rate across working years as a member of the scheme up until pension age (e.g. 1/57th). A notional employer cost % is usually listed in the offer, which helps to better compare against a DC offer.
+- **Total Package Value** = gross salary + employer pension : what the role actually costs the employer and what the employee receives in total. this can be further modified by other factors in the model, such as annual leave, bonus, etc.
 
 ### Pitching salary expectations
 Many roles require applicants to propse a salary expectation.  To do this effectively it helps to understand take-home salary and the value of other benefits that the spec outlines.
 
 ### Understanding differences in gross salary
-The tax breakdown chart shows Income Tax, National Insurance, employee pension, and take-home as a **percentage of gross salary** across the full salary range — making it clear how the proportions shift as salary rises, including the 60% effective marginal rate trap between £100,000 and £125,140. This helps to understand the practical value of differences in gross salary.  Is it worth taking a higher offer for a less attractive role?
+The tax breakdown chart shows Income Tax, National Insurance, employee pension, and take-home as a **percentage of gross salary** across the full salary range. This makes it clear how the proportions shift as salary rises, including the 60% effective marginal rate trap between £100,000 and £125,140. This helps to understand the practical value of differences in gross salary.  Is it worth taking a higher offer for a less attractive role?
 
 ---
 
 ## Features
 
-- Compare two positions side by side in a single table (row labels appear once)
-- Per-position pension configuration — fully independent between the two roles
+- Compare two positions side by side in a single table
+- Per-position pension configuration: fully independent between the two roles
 - DC pension: configurable employee % and employer %
 - DB pension: accrual rate selector plus employer notional cost % for package comparison
-- Pension config is optional — disable per position if not applicable
+- Pension config is optional, disable per position if not applicable
 - Total Package Value including employer pension contributions
 - Annual leave and hours-per-week adjustments to normalise packages
 - Scotland income tax support (2025/26 bands — 2026/27 not yet confirmed)
-- Tax breakdown chart as % of gross salary (not £ amounts)
+- Tax breakdown chart as % of gross salary
 - Gross vs take-home and effective rate charts across salary range
 - Configurable position labels
-- Export comparison as HTML or PDF
-- Detailed data table (optional)
+- Export comparison as PDF
+- Detailed data table
 
 ---
 
@@ -83,7 +83,7 @@ The app opens at `http://localhost:8501`.
 - **England, Wales & Northern Ireland** rates are 2026/27.
 - **Scotland** income tax uses 2025/26 bands as 2026/27 bands were not confirmed at time of writing. NI rates are the same across the UK.
 - Does not account for student loan repayments, salary sacrifice, childcare vouchers, or Marriage Allowance.
-- DB employer cost % is a notional figure entered by the user for comparison purposes — actual scheme costs vary by scheme and employer.
+- DB employer cost % is a notional figure entered by the user for comparison purposes. actual scheme costs vary by scheme and employer.
 
 ---
 

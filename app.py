@@ -173,11 +173,13 @@ def position_sidebar_ui(prefix, default_salary, default_label):
         key=f"{prefix}_ptype", horizontal=True,
     )
     employee_pct = st.sidebar.slider(
-        "Employee contribution %", 0.0, 15.0, 5.0, 0.5, key=f"{prefix}_emp"
-    )
+        "Employee contribution %", 0.0, 15.0,
+        5.0 if "Defined Contribution" in ptype else 10.0,
+        0.5, key=f"{prefix}_emp"
+)
     employer_pct = st.sidebar.slider(
         "Employer contribution %", 0.0, 30.0,
-        3.0 if "DC" in ptype else 20.0,
+        5.0 if "Defined Contribution" in ptype else 20.0,
         0.5, key=f"{prefix}_er",
     )
     if "Contribution" in ptype:
