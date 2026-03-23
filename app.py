@@ -11,7 +11,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# 2026/27 tax constants — England, Wales & Northern Ireland
+# 2026/27 tax constants for England, Wales & Northern Ireland
 # ---------------------------------------------------------------------------
 PERSONAL_ALLOWANCE = 12570
 PA_TAPER_START = 100000
@@ -21,7 +21,7 @@ NI_PRIMARY_THRESHOLD = 12570
 NI_UPPER_THRESHOLD = 50270
 
 # ---------------------------------------------------------------------------
-# 2025/26 Scottish income tax thresholds (taxable income, after PA)
+# 2025/26 Scottish income tax thresholds
 # 2026/27 bands not yet confirmed; 2025/26 used as best available estimate.
 # ---------------------------------------------------------------------------
 SCOT_STARTER_LIMIT  =   2_827   # 19%
@@ -179,7 +179,7 @@ def position_sidebar_ui(prefix, default_salary, default_label):
 )
     employer_pct = st.sidebar.slider(
         "Employer contribution %", 0.0, 30.0,
-        5.0 if "Defined Contribution" in ptype else 20.0,
+        3.0 if "Contribution" in ptype else 20.0,
         0.5, key=f"{prefix}_er",
     )
     if "Contribution" in ptype:
@@ -202,9 +202,10 @@ def position_sidebar_ui(prefix, default_salary, default_label):
 # ---------------------------------------------------------------------------
 
 JURIS_LABEL = {"england": "Eng/Wales/NI", "scotland": "Scotland"}
+ROW_SEP = "__sep__"
 
 
-def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_pct1=0, bonus_pct2=0, commute_cost1=0, commute_cost2=0):
+def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, salary1=0, salary2=0, bonus_pct1=0, bonus_pct2=0, commute_cost1=0, commute_cost2=0):
     er1 = data1['gross'] * pension1['employer_pct'] / 100 if pension1.get('enabled') else 0
     er2 = data2['gross'] * pension2['employer_pct'] / 100 if pension2.get('enabled') else 0
     leave_adj1, hours_adj1 = calc_package_adjustments(data1['gross'], work1)
@@ -225,10 +226,10 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
         return "37.5 hrs (standard)" if abs(diff) < 0.01 else \
                f"{h:.1f} hrs ({'+' if diff > 0 else ''}{diff:.1f} vs 37.5)"
 
-    bonus1 = data1['gross'] * bonus_pct1 / (100 + bonus_pct1) if bonus_pct1 else 0
-    bonus2 = data2['gross'] * bonus_pct2 / (100 + bonus_pct2) if bonus_pct2 else 0
-    base1 = data1['gross'] - bonus1
-    base2 = data2['gross'] - bonus2
+    bonus1 = salary1 * bonus_pct1 / 100 if bonus_pct1 else 0
+    bonus2 = salary2 * bonus_pct2 / 100 if bonus_pct2 else 0
+    base1 = salary1
+    base2 = salary2
     either_bonus = bonus_pct1 or bonus_pct2
 
     rows = [
@@ -271,7 +272,7 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
         ("<strong>Adjusted Compensation</strong>",
          f"<strong>{format_currency(adjusted_package1)}</strong>",
          f"<strong>{format_currency(adjusted_package2)}</strong>"),
-        ("__sep__", "", ""),
+        (ROW_SEP, "", ""),
     ]
 
     if work1['jurisdiction'] == work2['jurisdiction']:
@@ -305,7 +306,7 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
     either_commute = commute_cost1 or commute_cost2
 
     rows += [
-        ("__sep__", "", ""),
+        (ROW_SEP, "", ""),
         ("<strong>Take-Home per year</strong>",
          f"<strong>{format_currency(data1['take_home'])}</strong>",
          f"<strong>{format_currency(data2['take_home'])}</strong>"),
@@ -327,11 +328,11 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
              format_currency(net2 / 12)),
         ]
 
-    rows += [("__sep__", "", ""),
+    rows += [(ROW_SEP, "", ""),
         ("Tax Rate (IT + NI)", f"{data1['tax_rate']:.1f}%", f"{data2['tax_rate']:.1f}%"),
         ("Total Deduction Rate (incl. employee pension)",
          f"{data1['deduction_rate']:.1f}%", f"{data2['deduction_rate']:.1f}%"),
-        ("__sep__", "", ""),
+        (ROW_SEP, "", ""),
         ("Office Days Required / Week",
          f"{work1['office_days']} day{'s' if work1['office_days'] != 1 else ''}",
          f"{work2['office_days']} day{'s' if work2['office_days'] != 1 else ''}"),
@@ -353,14 +354,14 @@ def build_comparison_rows(data1, pension1, work1, data2, pension2, work2, bonus_
             return f"DB · {p.get('accrual','')} · {p['employee_pct']:.1f}% emp / {p['employer_pct']:.1f}% er (notional)"
         rows.append(("Pension Scheme", pension_summary(pension1), pension_summary(pension2)))
 
-    return rows, adjusted_package1, adjusted_package2
+    return rows
 
 
 def display_comparison_table(title1, title2, rows):
     html_rows = ""
     non_sep = 0
     for label, v1, v2 in rows:
-        if label == "__sep__":
+        if label == ROW_SEP:
             html_rows += (
                 '<tr><td colspan="3" style="padding:0;">'
                 '<hr style="margin:4px 0;border:none;border-top:1px solid #ccd6e0;"></td></tr>'
@@ -424,7 +425,6 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
     )
     styles = getSampleStyleSheet()
     DARK  = colors.HexColor('#1a3c5e')
-    BLUE  = colors.HexColor('#1a3c5e')
     GREEN = colors.HexColor('#1a5e34')
     ALT   = colors.HexColor('#f4f8fc')
 
@@ -467,7 +467,7 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
     sep_indices = []
     idx = 1
     for label, v1, v2 in rows:
-        if label == "__sep__":
+        if label == ROW_SEP:
             sep_indices.append(idx)
             tdata.append([Spacer(1, 3), '', ''])
             idx += 1
@@ -475,7 +475,7 @@ def generate_pdf_report(title1, title2, rows, metrics_rows, today):
         bold = _is_strong(label)
         tdata.append([
             cell(label, bold=bold),
-            cell(v1, bold=bold, align=TA_RIGHT, color=BLUE),
+            cell(v1, bold=bold, align=TA_RIGHT, color=DARK),
             cell(v2, bold=bold, align=TA_RIGHT, color=GREEN),
         ])
         idx += 1
@@ -562,9 +562,9 @@ def main():
     data2 = calculate_take_home(effective_salary2, emp_pct2, work2['jurisdiction'])
 
     # ── Comparison table ─────────────────────────────────────────────────────
-    rows, _, _ = build_comparison_rows(
-        data1, pension1, work1, data2, pension2, work2, bonus_pct1, bonus_pct2,
-        commute_cost1, commute_cost2,
+    rows = build_comparison_rows(
+        data1, pension1, work1, data2, pension2, work2, salary1, salary2,
+        bonus_pct1, bonus_pct2, commute_cost1, commute_cost2,
     )
     display_comparison_table(
         f"{label1}<br><small style='font-weight:normal;'>{format_currency(salary1)}</small>",
