@@ -79,8 +79,8 @@ commute    = st.sidebar.number_input(
 
 st.sidebar.markdown("**Pension**")
 pen_on = st.sidebar.checkbox("Include pension", True)
-pen_ee = st.sidebar.slider("Employee contribution %", 0.0, 15.0, 5.0, 0.5) if pen_on else 0.0
-pen_er = st.sidebar.slider("Employer contribution %", 0.0, 30.0, 3.0, 0.5) if pen_on else 0.0
+pen_ee = st.sidebar.slider("Employee contribution %", 5.0, 15.0, 5.0, 0.5) if pen_on else 0.0
+pen_er = st.sidebar.slider("Employer contribution %", 3.0, 30.0, 3.0, 0.5) if pen_on else 0.0
 
 # ---------------------------------------------------------------------------
 # Calculations
